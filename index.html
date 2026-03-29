@@ -507,7 +507,10 @@
         const popupHtml = `<strong>${escapeHtml(item.title)}</strong><br>${escapeHtml(item.description || "")}`;
         leafletMarker.bindPopup(popupHtml);
 
-        leafletMarker.on("click", () => {
+        leafletMarker.on("click", (e) => {
+          if (e.originalEvent) {
+            e.originalEvent.stopPropagation();
+          }
           focusMarker(item.id);
           if (isAdmin()) loadMarkerIntoForm(item.id);
         });
@@ -520,7 +523,8 @@
           <p>X: ${Number(item.x).toFixed(2)} · Y: ${Number(item.y).toFixed(2)}</p>
         `;
 
-        card.addEventListener("click", () => {
+        card.addEventListener("click", (e) => {
+          e.stopPropagation();
           focusMarker(item.id);
           if (isAdmin()) loadMarkerIntoForm(item.id);
         });
@@ -703,15 +707,17 @@
         return;
       }
 
-      if (selectedMarkerId === null) {
+      if (selectedMarkerId === null || selectedMarkerId === undefined) {
         setStatus("Bitte zuerst einen Marker auswählen.", "error");
         return;
       }
 
+      const markerIdToDelete = selectedMarkerId;
+
       const { error } = await supabaseClient
         .from("markers")
         .delete()
-        .eq("id", selectedMarkerId);
+        .eq("id", markerIdToDelete);
 
       if (error) {
         console.error(error);
@@ -719,6 +725,7 @@
         return;
       }
 
+      selectedMarkerId = null;
       await loadMarkers();
       resetMarkerForm();
       setStatus("Marker gelöscht.", "success");
