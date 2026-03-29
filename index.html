@@ -535,11 +535,11 @@
 
         supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        const { data, error } = await supabaseClient.auth.getUser();
-        if (error) throw error;
+        const { data: sessionData } = await supabaseClient.auth.getSession();
+        currentUser = sessionData?.session?.user || null;
 
-        currentUser = data.user || null;
         updateAuthUI();
+        await loadMarkers();
 
         await loadMarkers();
 
