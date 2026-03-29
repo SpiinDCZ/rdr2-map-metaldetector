@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -13,32 +12,38 @@
   />
   <style>
     * { box-sizing: border-box; }
+
     body {
       margin: 0;
       font-family: Arial, Helvetica, sans-serif;
       background: #111827;
       color: #f9fafb;
     }
+
     .app {
       display: grid;
       grid-template-columns: 340px 1fr;
       min-height: 100vh;
     }
+
     .sidebar {
       background: #111827;
       border-right: 1px solid #263041;
       padding: 20px;
       overflow-y: auto;
     }
+
     .sidebar h1 {
       margin: 0 0 8px;
       font-size: 28px;
     }
+
     .sidebar p {
       color: #d1d5db;
       font-size: 14px;
       line-height: 1.5;
     }
+
     .panel {
       background: #1f2937;
       border: 1px solid #374151;
@@ -46,14 +51,17 @@
       padding: 14px;
       margin-top: 14px;
     }
+
     .panel h2 {
       margin: 0 0 10px;
       font-size: 16px;
     }
+
     .small {
       font-size: 12px;
       color: #9ca3af;
     }
+
     .status {
       font-size: 13px;
       padding: 10px 12px;
@@ -62,23 +70,28 @@
       background: #172554;
       color: #dbeafe;
       border: 1px solid #1d4ed8;
+      word-break: break-word;
     }
+
     .status.error {
       background: #450a0a;
       color: #fee2e2;
       border-color: #dc2626;
     }
+
     .status.success {
       background: #052e16;
       color: #dcfce7;
       border-color: #16a34a;
     }
+
     label {
       display: block;
       font-size: 13px;
       margin: 10px 0 6px;
       color: #e5e7eb;
     }
+
     input, textarea {
       width: 100%;
       padding: 10px 12px;
@@ -88,16 +101,19 @@
       color: #f9fafb;
       font-size: 14px;
     }
+
     textarea {
       min-height: 84px;
       resize: vertical;
     }
+
     .row {
       display: flex;
       gap: 8px;
       margin-top: 12px;
       flex-wrap: wrap;
     }
+
     button {
       border: none;
       border-radius: 12px;
@@ -107,21 +123,27 @@
       background: #2563eb;
       color: white;
     }
+
     button.secondary { background: #374151; }
     button.danger { background: #dc2626; }
+
     button:disabled {
       opacity: 0.5;
       cursor: not-allowed;
     }
+
     .map-area {
       position: relative;
       min-height: 100vh;
       background: #000;
     }
+
     #map {
       width: 100%;
       height: 100vh;
+      background: #000;
     }
+
     .map-topbar {
       position: absolute;
       top: 14px;
@@ -136,6 +158,7 @@
       padding: 10px 12px;
       backdrop-filter: blur(6px);
     }
+
     .badge {
       font-size: 12px;
       padding: 6px 10px;
@@ -143,6 +166,7 @@
       background: #374151;
       color: #f3f4f6;
     }
+
     .marker-list {
       display: grid;
       gap: 10px;
@@ -150,26 +174,33 @@
       max-height: 360px;
       overflow-y: auto;
     }
+
     .marker-item {
       padding: 12px;
       border-radius: 14px;
       border: 1px solid #374151;
       background: #0f172a;
+      cursor: pointer;
     }
+
     .marker-item h3 {
       margin: 0 0 4px;
       font-size: 15px;
     }
+
     .marker-item p {
       margin: 0 0 6px;
       color: #cbd5e1;
       font-size: 13px;
     }
+
     .hidden { display: none !important; }
+
     .leaflet-container {
       background: #0b0b0b;
       font-family: Arial, Helvetica, sans-serif;
     }
+
     .custom-pin {
       width: 18px;
       height: 18px;
@@ -179,6 +210,7 @@
       border: 2px solid white;
       box-shadow: 0 4px 10px rgba(0,0,0,0.4);
     }
+
     .custom-pin::after {
       content: "";
       position: absolute;
@@ -189,14 +221,17 @@
       top: 4px;
       left: 4px;
     }
+
     @media (max-width: 980px) {
       .app {
         grid-template-columns: 1fr;
       }
+
       .sidebar {
         border-right: none;
         border-bottom: 1px solid #263041;
       }
+
       .map-area, #map {
         min-height: 75vh;
         height: 75vh;
@@ -282,9 +317,9 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-    const SUPABASE_URL = "https://xxmdrtfbhtzkumwmslvw.supabase.co";
-    const SUPABASE_ANON_KEY = "sb_publishable_XlWdql4hNvjAhYwRmZudZg_RSdztC2P";
-    const ADMIN_EMAIL = "cihat0055.ck@gmail.com";
+    const SUPABASE_URL = "https://xxmdrtfbhtzkumwmslvw.supabase.co".trim();
+    const SUPABASE_ANON_KEY = "sb_publishable_XlWdql4hNvjAhYwRmZudZg_RSdztC2P".trim();
+    const ADMIN_EMAIL = "cihat0055.ck@gmail.com".trim();
 
     const DEFAULT_IMAGE_URL = "./rdr2-map.jpg";
 
@@ -308,7 +343,7 @@
     const deleteMarkerBtn = document.getElementById("deleteMarkerBtn");
     const markerList = document.getElementById("markerList");
 
-    let supabase = null;
+    let supabaseClient = null;
     let map = null;
     let imageOverlay = null;
     let markersLayer = null;
@@ -335,12 +370,22 @@
 
       const bounds = [[0, 0], [100, 100]];
       imageOverlay = L.imageOverlay(DEFAULT_IMAGE_URL, bounds).addTo(map);
+
+      imageOverlay.on("load", function () {
+        setStatus("Kartenbild geladen. Verbindung wird geprüft...", "success");
+      });
+
+      imageOverlay.on("error", function () {
+        setStatus("Kartenbild konnte nicht geladen werden: " + DEFAULT_IMAGE_URL, "error");
+      });
+
       map.fitBounds(bounds);
       map.setMaxBounds([[-10, -10], [110, 110]]);
       markersLayer = L.layerGroup().addTo(map);
 
       map.on("click", (event) => {
         if (!isAdmin()) return;
+
         selectedMarkerId = null;
         fillMarkerForm({
           title: "",
@@ -348,6 +393,7 @@
           x: Number(event.latlng.lng.toFixed(2)),
           y: Number((100 - event.latlng.lat).toFixed(2))
         });
+
         setStatus("Neue Marker-Position übernommen. Name eintragen und speichern.", "success");
       });
     }
@@ -372,6 +418,7 @@
 
     function renderMarkers() {
       if (!markersLayer) return;
+
       markersLayer.clearLayers();
       markerList.innerHTML = "";
 
@@ -383,6 +430,7 @@
       markers.forEach((item) => {
         const lat = 100 - Number(item.y);
         const lng = Number(item.x);
+
         const leafletMarker = L.marker([lat, lng], { icon: markerIcon() }).addTo(markersLayer);
 
         const popupHtml = `<strong>${escapeHtml(item.title)}</strong><br>${escapeHtml(item.description || "")}`;
@@ -400,10 +448,12 @@
           <p>${escapeHtml(item.description || "Keine Beschreibung")}</p>
           <p>X: ${Number(item.x).toFixed(2)} · Y: ${Number(item.y).toFixed(2)}</p>
         `;
+
         card.addEventListener("click", () => {
           focusMarker(item.id);
           if (isAdmin()) loadMarkerIntoForm(item.id);
         });
+
         markerList.appendChild(card);
       });
     }
@@ -419,6 +469,7 @@
     function loadMarkerIntoForm(id) {
       const marker = markers.find((m) => m.id === id);
       if (!marker) return;
+
       selectedMarkerId = id;
       fillMarkerForm(marker);
       setStatus(`Marker „${marker.title}“ geladen.`, "success");
@@ -427,11 +478,14 @@
     function focusMarker(id) {
       const marker = markers.find((m) => m.id === id);
       if (!marker || !map) return;
+
       map.setView([100 - Number(marker.y), Number(marker.x)], 0);
     }
 
     function isAdmin() {
-      return !!currentUser && currentUser.email && currentUser.email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+      return !!currentUser &&
+        !!currentUser.email &&
+        currentUser.email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
     }
 
     function updateAuthUI() {
@@ -456,41 +510,53 @@
     async function initSupabase() {
       if (
         !SUPABASE_URL ||
-        SUPABASE_URL.includes("HIER_DEINE_SUPABASE_URL_EINTRAGEN") ||
+        SUPABASE_URL.includes("HIER_DEINE_SUPABASE_URL") ||
         !SUPABASE_ANON_KEY ||
-        SUPABASE_ANON_KEY.includes("HIER_DEINEN_PUBLISHABLE_KEY_EINTRAGEN") ||
+        SUPABASE_ANON_KEY.includes("HIER_DEINEN_PUBLISHABLE_KEY") ||
         !ADMIN_EMAIL ||
-        ADMIN_EMAIL.includes("HIER_DEINE_ADMIN_EMAIL_EINTRAGEN")
+        ADMIN_EMAIL.includes("HIER_DEINE_ADMIN_EMAIL")
       ) {
-        setStatus("Bitte zuerst im Code SUPABASE_URL, Publishable Key und ADMIN_EMAIL eintragen.", "error");
+        setStatus("Bitte zuerst SUPABASE_URL, Publishable Key und ADMIN_EMAIL im Code eintragen.", "error");
         return;
       }
 
       try {
-        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        const { data, error } = await supabase.auth.getUser();
+        if (!window.supabase || typeof window.supabase.createClient !== "function") {
+          throw new Error("Supabase-Bibliothek wurde nicht geladen.");
+        }
+
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        const { data, error } = await supabaseClient.auth.getUser();
         if (error) throw error;
+
         currentUser = data.user || null;
         updateAuthUI();
+
         await loadMarkers();
-        setStatus(currentUser ? "Verbunden und Benutzer erkannt." : "Verbunden. Besucher-Modus aktiv.", "success");
+
+        if (currentUser) {
+          setStatus("Verbunden und Benutzer erkannt.", "success");
+        } else {
+          setStatus("Verbunden. Besucher-Modus aktiv.", "success");
+        }
       } catch (error) {
         console.error(error);
-        setStatus("Verbindung zu Supabase fehlgeschlagen. Prüfe URL und Key.", "error");
+        setStatus("Supabase-Fehler: " + (error.message || String(error)), "error");
       }
     }
 
     async function loadMarkers() {
-      if (!supabase) return;
+      if (!supabaseClient) return;
 
-      const { data, error } = await supabase
+      const { data, error } = await supabaseClient
         .from("markers")
         .select("id,title,description,x,y,created_by,created_at,updated_at")
         .order("created_at", { ascending: true });
 
       if (error) {
         console.error(error);
-        setStatus("Marker konnten nicht geladen werden. Prüfe Tabelle und RLS.", "error");
+        setStatus("Marker konnten nicht geladen werden: " + (error.message || String(error)), "error");
         return;
       }
 
@@ -499,7 +565,7 @@
     }
 
     async function login() {
-      if (!supabase) {
+      if (!supabaseClient) {
         setStatus("Supabase ist noch nicht bereit.", "error");
         return;
       }
@@ -517,10 +583,11 @@
         return;
       }
 
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+
       if (error) {
         console.error(error);
-        setStatus("Login fehlgeschlagen.", "error");
+        setStatus("Login fehlgeschlagen: " + (error.message || String(error)), "error");
         return;
       }
 
@@ -530,11 +597,19 @@
     }
 
     async function logout() {
-      if (!supabase) return;
-      await supabase.auth.signOut();
+      if (!supabaseClient) return;
+
+      await supabaseClient.auth.signOut();
       currentUser = null;
       selectedMarkerId = null;
-      fillMarkerForm({ title: "", description: "", x: "", y: "" });
+
+      fillMarkerForm({
+        title: "",
+        description: "",
+        x: "",
+        y: ""
+      });
+
       updateAuthUI();
       setStatus("Abgemeldet. Besucher-Modus aktiv.", "success");
     }
@@ -563,13 +638,14 @@
 
       const payload = getMarkerPayload();
       const validationError = validateMarkerPayload(payload);
+
       if (validationError) {
         setStatus(validationError, "error");
         return;
       }
 
       if (selectedMarkerId) {
-        const { error } = await supabase
+        const { error } = await supabaseClient
           .from("markers")
           .update({
             title: payload.title,
@@ -582,13 +658,13 @@
 
         if (error) {
           console.error(error);
-          setStatus("Marker konnte nicht aktualisiert werden.", "error");
+          setStatus("Marker konnte nicht aktualisiert werden: " + (error.message || String(error)), "error");
           return;
         }
 
         setStatus("Marker aktualisiert.", "success");
       } else {
-        const { error } = await supabase
+        const { error } = await supabaseClient
           .from("markers")
           .insert({
             title: payload.title,
@@ -600,7 +676,7 @@
 
         if (error) {
           console.error(error);
-          setStatus("Marker konnte nicht erstellt werden.", "error");
+          setStatus("Marker konnte nicht erstellt werden: " + (error.message || String(error)), "error");
           return;
         }
 
@@ -609,7 +685,12 @@
 
       await loadMarkers();
       selectedMarkerId = null;
-      fillMarkerForm({ title: "", description: "", x: "", y: "" });
+      fillMarkerForm({
+        title: "",
+        description: "",
+        x: "",
+        y: ""
+      });
     }
 
     async function deleteMarker() {
@@ -617,31 +698,44 @@
         setStatus("Nur der Admin darf Marker löschen.", "error");
         return;
       }
+
       if (!selectedMarkerId) {
         setStatus("Bitte zuerst einen Marker auswählen.", "error");
         return;
       }
 
-      const { error } = await supabase
+      const { error } = await supabaseClient
         .from("markers")
         .delete()
         .eq("id", selectedMarkerId);
 
       if (error) {
         console.error(error);
-        setStatus("Marker konnte nicht gelöscht werden.", "error");
+        setStatus("Marker konnte nicht gelöscht werden: " + (error.message || String(error)), "error");
         return;
       }
 
       selectedMarkerId = null;
-      fillMarkerForm({ title: "", description: "", x: "", y: "" });
+      fillMarkerForm({
+        title: "",
+        description: "",
+        x: "",
+        y: ""
+      });
+
       await loadMarkers();
       setStatus("Marker gelöscht.", "success");
     }
 
     function resetMarkerForm() {
       selectedMarkerId = null;
-      fillMarkerForm({ title: "", description: "", x: "", y: "" });
+      fillMarkerForm({
+        title: "",
+        description: "",
+        x: "",
+        y: ""
+      });
+
       setStatus("Formular zurückgesetzt.", "success");
     }
 
