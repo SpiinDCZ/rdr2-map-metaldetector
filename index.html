@@ -369,11 +369,13 @@
         attributionControl: false
       });
 
-      const bounds = [[0, 0], [100, 100]];
+      const bounds = [[0, 0], [1000, 1600]];
       imageOverlay = L.imageOverlay(DEFAULT_IMAGE_URL, bounds).addTo(map);
 
       imageOverlay.on("load", function () {
         setStatus("Kartenbild geladen. Verbindung wird geprüft...", "success");
+        map.fitBounds(bounds);
+        map.invalidateSize();
       });
 
       imageOverlay.on("error", function () {
@@ -381,8 +383,13 @@
       });
 
       map.fitBounds(bounds);
-      map.setMaxBounds([[-10, -10], [110, 110]]);
+      map.setMaxBounds([[-100, -100], [1100, 1700]]);
       markersLayer = L.layerGroup().addTo(map);
+
+      setTimeout(() => {
+        map.invalidateSize();
+        map.fitBounds(bounds);
+      }, 300);
 
       map.on("click", (event) => {
         if (!isAdmin()) return;
@@ -429,8 +436,8 @@
       }
 
       markers.forEach((item) => {
-        const lat = 100 - Number(item.y);
-        const lng = Number(item.x);
+        const lat = 1000 - (Number(item.y) * 10);
+        const lng = Number(item.x) * 16;
 
         const leafletMarker = L.marker([lat, lng], { icon: markerIcon() }).addTo(markersLayer);
 
@@ -480,7 +487,7 @@
       const marker = markers.find((m) => m.id === id);
       if (!marker || !map) return;
 
-      map.setView([100 - Number(marker.y), Number(marker.x)], 0);
+      map.setView([1000 - (Number(marker.y) * 10), Number(marker.x) * 16], -1);
     }
 
     function isAdmin() {
