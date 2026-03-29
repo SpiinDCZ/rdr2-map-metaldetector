@@ -271,7 +271,7 @@
           </div>
         </div>
 
-        <div id="authStatus" class="status">Lade Verbindung...</div>
+        <div id="authStatus" class="status">Lade Seite...</div>
       </div>
 
       <div class="panel hidden" id="editorPanel">
@@ -321,7 +321,6 @@
     const SUPABASE_URL = "https://xxmdrtfbhtzkumwmslvw.supabase.co".trim();
     const SUPABASE_ANON_KEY = "sb_publishable_XlWdql4hNvjAhYwRmZudZg_RSdztC2P".trim();
     const ADMIN_EMAIL = "cihat0055.ck@gmail.com".trim();
-
     const DEFAULT_IMAGE_URL = "./rdr2-map.jpg";
 
     const emailInput = document.getElementById("emailInput");
@@ -358,6 +357,31 @@
       if (type) authStatus.classList.add(type);
     }
 
+    function isAdmin() {
+      return !!currentUser &&
+        !!currentUser.email &&
+        currentUser.email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+    }
+
+    function updateAuthUI() {
+      if (currentUser) {
+        loggedOutBox.classList.add("hidden");
+        loggedInBox.classList.remove("hidden");
+        loggedInText.textContent = `Angemeldet als ${currentUser.email}`;
+      } else {
+        loggedOutBox.classList.remove("hidden");
+        loggedInBox.classList.add("hidden");
+      }
+
+      if (isAdmin()) {
+        editorPanel.classList.remove("hidden");
+        viewerModeBadge.textContent = "Admin-Modus";
+      } else {
+        editorPanel.classList.add("hidden");
+        viewerModeBadge.textContent = "Besucher-Modus";
+      }
+    }
+
     function initMap() {
       if (map) return;
 
@@ -391,6 +415,10 @@
         map.fitBounds(bounds);
       }, 300);
 
+      window.addEventListener("resize", () => {
+        map.invalidateSize();
+      });
+
       map.on("click", (event) => {
         if (!isAdmin()) return;
 
@@ -422,6 +450,30 @@
         .replaceAll(">", "&gt;")
         .replaceAll('"', "&quot;")
         .replaceAll("'", "&#039;");
+    }
+
+    function fillMarkerForm(data) {
+      markerNameInput.value = data.title || "";
+      markerDescriptionInput.value = data.description || "";
+      markerXInput.value = data.x ?? "";
+      markerYInput.value = data.y ?? "";
+      deleteMarkerBtn.disabled = !selectedMarkerId;
+    }
+
+    function loadMarkerIntoForm(id) {
+      const marker = markers.find((m) => m.id === id);
+      if (!marker) return;
+
+      selectedMarkerId = id;
+      fillMarkerForm(marker);
+      setStatus(`Marker „${marker.title}“ geladen.`, "success");
+    }
+
+    function focusMarker(id) {
+      const marker = markers.find((m) => m.id === id);
+      if (!marker || !map) return;
+
+      map.setView([1000 - (Number(marker.y) * 10), Number(marker.x) * 16], -1);
     }
 
     function renderMarkers() {
@@ -466,94 +518,6 @@
       });
     }
 
-    function fillMarkerForm(data) {
-      markerNameInput.value = data.title || "";
-      markerDescriptionInput.value = data.description || "";
-      markerXInput.value = data.x ?? "";
-      markerYInput.value = data.y ?? "";
-      deleteMarkerBtn.disabled = !selectedMarkerId;
-    }
-
-    function loadMarkerIntoForm(id) {
-      const marker = markers.find((m) => m.id === id);
-      if (!marker) return;
-
-      selectedMarkerId = id;
-      fillMarkerForm(marker);
-      setStatus(`Marker „${marker.title}“ geladen.`, "success");
-    }
-
-    function focusMarker(id) {
-      const marker = markers.find((m) => m.id === id);
-      if (!marker || !map) return;
-
-      map.setView([1000 - (Number(marker.y) * 10), Number(marker.x) * 16], -1);
-    }
-
-    function isAdmin() {
-      return !!currentUser &&
-        !!currentUser.email &&
-        currentUser.email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
-    }
-
-    function updateAuthUI() {
-      if (currentUser) {
-        loggedOutBox.classList.add("hidden");
-        loggedInBox.classList.remove("hidden");
-        loggedInText.textContent = `Angemeldet als ${currentUser.email}`;
-      } else {
-        loggedOutBox.classList.remove("hidden");
-        loggedInBox.classList.add("hidden");
-      }
-
-      if (isAdmin()) {
-        editorPanel.classList.remove("hidden");
-        viewerModeBadge.textContent = "Admin-Modus";
-      } else {
-        editorPanel.classList.add("hidden");
-        viewerModeBadge.textContent = "Besucher-Modus";
-      }
-    }
-
-    async function initSupabase() {
-      if (
-        !SUPABASE_URL ||
-        SUPABASE_URL.includes("HIER_DEINE_SUPABASE_URL") ||
-        !SUPABASE_ANON_KEY ||
-        SUPABASE_ANON_KEY.includes("HIER_DEINEN_PUBLISHABLE_KEY") ||
-        !ADMIN_EMAIL ||
-        ADMIN_EMAIL.includes("HIER_DEINE_ADMIN_EMAIL")
-      ) {
-        setStatus("Bitte zuerst SUPABASE_URL, Publishable Key und ADMIN_EMAIL im Code eintragen.", "error");
-        return;
-      }
-
-      try {
-        if (!window.supabase || typeof window.supabase.createClient !== "function") {
-          throw new Error("Supabase-Bibliothek wurde nicht geladen.");
-        }
-
-        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-        const { data: sessionData } = await supabaseClient.auth.getSession();
-        currentUser = sessionData?.session?.user || null;
-
-        updateAuthUI();
-        await loadMarkers();
-
-        await loadMarkers();
-
-        if (currentUser) {
-          setStatus("Verbunden und Benutzer erkannt.", "success");
-        } else {
-          setStatus("Verbunden. Besucher-Modus aktiv.", "success");
-        }
-      } catch (error) {
-        console.error(error);
-        setStatus("Supabase-Fehler: " + (error.message || String(error)), "error");
-      }
-    }
-
     async function loadMarkers() {
       if (!supabaseClient) return;
 
@@ -564,12 +528,44 @@
 
       if (error) {
         console.error(error);
-        setStatus("Marker konnten nicht geladen werden: " + (error.message || String(error)), "error");
+        setStatus("Marker-Fehler: " + (error.message || String(error)), "error");
         return;
       }
 
       markers = data || [];
       renderMarkers();
+    }
+
+    async function initSupabase() {
+      if (!window.supabase || typeof window.supabase.createClient !== "function") {
+        setStatus("Supabase-Bibliothek wurde nicht geladen.", "error");
+        return;
+      }
+
+      try {
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        currentUser = null;
+        updateAuthUI();
+
+        await loadMarkers();
+        setStatus("Verbunden. Besucher-Modus aktiv.", "success");
+
+        supabaseClient.auth.onAuthStateChange(async (_event, session) => {
+          currentUser = session?.user || null;
+          updateAuthUI();
+          await loadMarkers();
+
+          if (currentUser) {
+            setStatus("Verbunden und Benutzer erkannt.", "success");
+          } else {
+            setStatus("Verbunden. Besucher-Modus aktiv.", "success");
+          }
+        });
+      } catch (error) {
+        console.error(error);
+        setStatus("Supabase-Fehler: " + (error.message || String(error)), "error");
+      }
     }
 
     async function login() {
@@ -591,7 +587,7 @@
         return;
       }
 
-      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+      const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
 
       if (error) {
         console.error(error);
@@ -599,15 +595,18 @@
         return;
       }
 
-      currentUser = data.user;
-      updateAuthUI();
-      setStatus("Admin-Login erfolgreich.", "success");
+      setStatus("Login erfolgreich.", "success");
     }
 
     async function logout() {
       if (!supabaseClient) return;
 
-      await supabaseClient.auth.signOut();
+      const { error } = await supabaseClient.auth.signOut();
+      if (error) {
+        setStatus("Logout fehlgeschlagen: " + (error.message || String(error)), "error");
+        return;
+      }
+
       currentUser = null;
       selectedMarkerId = null;
 
