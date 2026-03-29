@@ -373,7 +373,7 @@
       imageOverlay = L.imageOverlay(DEFAULT_IMAGE_URL, bounds).addTo(map);
 
       imageOverlay.on("load", function () {
-        setStatus("Kartenbild geladen. Verbindung wird geprüft...", "success");
+        console.log("Kartenbild geladen.");
         map.fitBounds(bounds);
         map.invalidateSize();
       });
@@ -398,8 +398,8 @@
         fillMarkerForm({
           title: "",
           description: "",
-          x: Number(event.latlng.lng.toFixed(2)),
-          y: Number((100 - event.latlng.lat).toFixed(2))
+          x: Number((event.latlng.lng / 16).toFixed(2)),
+          y: Number(((1000 - event.latlng.lat) / 10).toFixed(2))
         });
 
         setStatus("Neue Marker-Position übernommen. Name eintragen und speichern.", "success");
