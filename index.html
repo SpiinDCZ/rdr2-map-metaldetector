@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>RDR2 Admin Map</title>
+  <title>RDR2 Metal Detector Locations</title>
   <link
     rel="stylesheet"
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -22,16 +22,27 @@
     }
 
     .app {
-      display: grid;
-      grid-template-columns: 340px 1fr;
+      display: block;
       min-height: 100vh;
     }
 
     .sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 340px;
+      height: 100vh;
       background: #111827;
       border-right: 1px solid #263041;
       padding: 20px;
       overflow-y: auto;
+      z-index: 1200;
+      transform: translateX(-100%);
+      transition: transform 0.2s ease;
+    }
+
+    .sidebar.open {
+      transform: translateX(0);
     }
 
     .sidebar h1 {
@@ -149,7 +160,7 @@
       position: absolute;
       top: 14px;
       right: 14px;
-      z-index: 900;
+      z-index: 1300;
       display: flex;
       gap: 8px;
       align-items: center;
@@ -158,14 +169,6 @@
       border-radius: 14px;
       padding: 10px 12px;
       backdrop-filter: blur(6px);
-    }
-
-    .badge {
-      font-size: 12px;
-      padding: 6px 10px;
-      border-radius: 999px;
-      background: #374151;
-      color: #f3f4f6;
     }
 
     .marker-list {
@@ -230,28 +233,17 @@
     }
 
     @media (max-width: 980px) {
-      .app {
-        grid-template-columns: 1fr;
-      }
-
       .sidebar {
-        border-right: none;
-        border-bottom: 1px solid #263041;
-      }
-
-      .map-area, #map {
-        min-height: 75vh;
-        height: 75vh;
+        width: 100%;
       }
     }
   </style>
 </head>
 <body>
   <div class="app">
-    <aside class="sidebar">
-      <h1>RDR2 Karte</h1>
+    <aside class="sidebar" id="sidebar">
+      <h1>RDR2 Metal Detector Locations</h1>
       <p>
-        Besucher können die Karte nur ansehen, zoomen und verschieben.
         Nur du kannst Marker setzen, bearbeiten und löschen, wenn du dich als Admin anmeldest.
       </p>
 
@@ -305,7 +297,7 @@
         </div>
       </div>
 
-      <div class="panel">
+      <div class="panel hidden" id="markerPanel">
         <h2>Marker</h2>
         <p class="small">Alle gespeicherten Marker.</p>
         <div id="markerList" class="marker-list"></div>
@@ -314,7 +306,7 @@
 
     <main class="map-area">
       <div class="map-topbar">
-        <span class="badge" id="viewerModeBadge">Besucher-Modus</span>
+        <button id="toggleAdminBtn" class="secondary">Admin-Login</button>
       </div>
       <div id="map"></div>
     </main>
@@ -328,6 +320,9 @@
     const ADMIN_EMAIL = "cihat0055.ck@gmail.com".trim();
     const DEFAULT_IMAGE_URL = "./rdr2-map.jpg";
 
+    const sidebar = document.getElementById("sidebar");
+    const toggleAdminBtn = document.getElementById("toggleAdminBtn");
+
     const emailInput = document.getElementById("emailInput");
     const passwordInput = document.getElementById("passwordInput");
     const loginBtn = document.getElementById("loginBtn");
@@ -336,8 +331,8 @@
     const loggedInBox = document.getElementById("loggedInBox");
     const loggedInText = document.getElementById("loggedInText");
     const authStatus = document.getElementById("authStatus");
-    const viewerModeBadge = document.getElementById("viewerModeBadge");
     const editorPanel = document.getElementById("editorPanel");
+    const markerPanel = document.getElementById("markerPanel");
 
     const markerNameInput = document.getElementById("markerName");
     const markerDescriptionInput = document.getElementById("markerDescription");
@@ -364,6 +359,16 @@
       if (type) authStatus.classList.add(type);
     }
 
+    function openSidebar() {
+      sidebar.classList.add("open");
+    }
+
+    function closeSidebar() {
+      if (!isAdmin()) {
+        sidebar.classList.remove("open");
+      }
+    }
+
     function isAdmin() {
       return !!currentUser &&
         !!currentUser.email &&
@@ -382,10 +387,14 @@
 
       if (isAdmin()) {
         editorPanel.classList.remove("hidden");
-        viewerModeBadge.textContent = "Admin-Modus";
+        markerPanel.classList.remove("hidden");
+        toggleAdminBtn.textContent = "Admin";
+        openSidebar();
       } else {
         editorPanel.classList.add("hidden");
-        viewerModeBadge.textContent = "Besucher-Modus";
+        markerPanel.classList.add("hidden");
+        toggleAdminBtn.textContent = "Admin-Login";
+        closeSidebar();
       }
     }
 
@@ -433,9 +442,7 @@
     function focusMarker(id) {
       const marker = markers.find((m) => Number(m.id) === Number(id));
       if (!marker || !map) return;
-      map.setView(markerToLatLng(marker), map.getZoom(), {
-        animate: false
-      });
+      map.setView(markerToLatLng(marker), map.getZoom(), { animate: false });
     }
 
     function selectMarker(id, { focus = true, status = true } = {}) {
@@ -649,17 +656,17 @@
 
         await fetchMarkers();
         subscribeToMarkerChanges();
-        setStatus("Verbunden. Besucher-Modus aktiv.", "success");
+        setStatus("Bereit.", "success");
 
         supabaseClient.auth.onAuthStateChange(async (_event, session) => {
           currentUser = session?.user || null;
           updateAuthUI();
 
           if (currentUser) {
-            setStatus("Verbunden und Benutzer erkannt.", "success");
+            setStatus("Admin verbunden.", "success");
           } else {
             resetMarkerForm();
-            setStatus("Verbunden. Besucher-Modus aktiv.", "success");
+            setStatus("Bereit.", "success");
           }
         });
       } catch (error) {
@@ -694,6 +701,7 @@
         return;
       }
 
+      openSidebar();
       setStatus("Login erfolgreich.", "success");
     }
 
@@ -709,7 +717,8 @@
       currentUser = null;
       resetMarkerForm();
       updateAuthUI();
-      setStatus("Abgemeldet. Besucher-Modus aktiv.", "success");
+      closeSidebar();
+      setStatus("Abgemeldet.", "success");
     }
 
     function getMarkerPayload() {
@@ -836,6 +845,14 @@
       resetMarkerForm();
       setStatus("Formular zurückgesetzt.", "success");
     }
+
+    toggleAdminBtn.addEventListener("click", () => {
+      if (sidebar.classList.contains("open") && !isAdmin()) {
+        closeSidebar();
+      } else {
+        openSidebar();
+      }
+    });
 
     loginBtn.addEventListener("click", login);
     logoutBtn.addEventListener("click", logout);
