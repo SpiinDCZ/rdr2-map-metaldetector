@@ -1,1 +1,659 @@
 
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RDR2 Admin Map</title>
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  />
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #111827;
+      color: #f9fafb;
+    }
+    .app {
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      min-height: 100vh;
+    }
+    .sidebar {
+      background: #111827;
+      border-right: 1px solid #263041;
+      padding: 20px;
+      overflow-y: auto;
+    }
+    .sidebar h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+    }
+    .sidebar p {
+      color: #d1d5db;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .panel {
+      background: #1f2937;
+      border: 1px solid #374151;
+      border-radius: 16px;
+      padding: 14px;
+      margin-top: 14px;
+    }
+    .panel h2 {
+      margin: 0 0 10px;
+      font-size: 16px;
+    }
+    .small {
+      font-size: 12px;
+      color: #9ca3af;
+    }
+    .status {
+      font-size: 13px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      margin-top: 10px;
+      background: #172554;
+      color: #dbeafe;
+      border: 1px solid #1d4ed8;
+    }
+    .status.error {
+      background: #450a0a;
+      color: #fee2e2;
+      border-color: #dc2626;
+    }
+    .status.success {
+      background: #052e16;
+      color: #dcfce7;
+      border-color: #16a34a;
+    }
+    label {
+      display: block;
+      font-size: 13px;
+      margin: 10px 0 6px;
+      color: #e5e7eb;
+    }
+    input, textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid #4b5563;
+      background: #0f172a;
+      color: #f9fafb;
+      font-size: 14px;
+    }
+    textarea {
+      min-height: 84px;
+      resize: vertical;
+    }
+    .row {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
+    button {
+      border: none;
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-size: 14px;
+      cursor: pointer;
+      background: #2563eb;
+      color: white;
+    }
+    button.secondary { background: #374151; }
+    button.danger { background: #dc2626; }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .map-area {
+      position: relative;
+      min-height: 100vh;
+      background: #000;
+    }
+    #map {
+      width: 100%;
+      height: 100vh;
+    }
+    .map-topbar {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      z-index: 900;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      background: rgba(17, 24, 39, 0.88);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px;
+      padding: 10px 12px;
+      backdrop-filter: blur(6px);
+    }
+    .badge {
+      font-size: 12px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: #374151;
+      color: #f3f4f6;
+    }
+    .marker-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 12px;
+      max-height: 360px;
+      overflow-y: auto;
+    }
+    .marker-item {
+      padding: 12px;
+      border-radius: 14px;
+      border: 1px solid #374151;
+      background: #0f172a;
+    }
+    .marker-item h3 {
+      margin: 0 0 4px;
+      font-size: 15px;
+    }
+    .marker-item p {
+      margin: 0 0 6px;
+      color: #cbd5e1;
+      font-size: 13px;
+    }
+    .hidden { display: none !important; }
+    .leaflet-container {
+      background: #0b0b0b;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+    .custom-pin {
+      width: 18px;
+      height: 18px;
+      border-radius: 50% 50% 50% 0;
+      transform: rotate(-45deg);
+      background: #dc2626;
+      border: 2px solid white;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+    }
+    .custom-pin::after {
+      content: "";
+      position: absolute;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: white;
+      top: 4px;
+      left: 4px;
+    }
+    @media (max-width: 980px) {
+      .app {
+        grid-template-columns: 1fr;
+      }
+      .sidebar {
+        border-right: none;
+        border-bottom: 1px solid #263041;
+      }
+      .map-area, #map {
+        min-height: 75vh;
+        height: 75vh;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <h1>RDR2 Karte</h1>
+      <p>
+        Besucher können die Karte nur ansehen, zoomen und verschieben.
+        Nur du kannst Marker setzen, bearbeiten und löschen, wenn du dich als Admin anmeldest.
+      </p>
+
+      <div class="panel">
+        <h2>Admin Login</h2>
+        <div id="loggedOutBox">
+          <label for="emailInput">E-Mail</label>
+          <input id="emailInput" type="email" placeholder="deine@email.de" />
+
+          <label for="passwordInput">Passwort</label>
+          <input id="passwordInput" type="password" placeholder="Passwort" />
+
+          <div class="row">
+            <button id="loginBtn">Einloggen</button>
+          </div>
+          <p class="small">Nur die festgelegte Admin-E-Mail darf später Marker ändern.</p>
+        </div>
+
+        <div id="loggedInBox" class="hidden">
+          <p id="loggedInText"></p>
+          <div class="row">
+            <button id="logoutBtn" class="secondary">Ausloggen</button>
+          </div>
+        </div>
+
+        <div id="authStatus" class="status">Lade Verbindung...</div>
+      </div>
+
+      <div class="panel hidden" id="editorPanel">
+        <h2>Marker bearbeiten</h2>
+        <p class="small">
+          Klicke im Admin-Modus auf die Karte, um einen Marker an der geklickten Stelle vorzubereiten.
+          Klicke auf einen vorhandenen Marker, um ihn zu bearbeiten.
+        </p>
+
+        <label for="markerName">Name</label>
+        <input id="markerName" placeholder="z. B. Schatz, Lager, Ort" />
+
+        <label for="markerDescription">Beschreibung</label>
+        <textarea id="markerDescription" placeholder="Optional"></textarea>
+
+        <label for="markerX">X (%)</label>
+        <input id="markerX" type="number" step="0.01" min="0" max="100" />
+
+        <label for="markerY">Y (%)</label>
+        <input id="markerY" type="number" step="0.01" min="0" max="100" />
+
+        <div class="row">
+          <button id="saveMarkerBtn">Speichern</button>
+          <button id="newMarkerBtn" class="secondary">Neu</button>
+          <button id="deleteMarkerBtn" class="danger">Löschen</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Marker</h2>
+        <p class="small">Alle gespeicherten Marker werden aus Supabase geladen.</p>
+        <div id="markerList" class="marker-list"></div>
+      </div>
+    </aside>
+
+    <main class="map-area">
+      <div class="map-topbar">
+        <span class="badge" id="viewerModeBadge">Besucher-Modus</span>
+      </div>
+      <div id="map"></div>
+    </main>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const SUPABASE_URL = "https://xxmdrtfbhtzkumwmslvw.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_XlWdql4hNvjAhYwRmZudZg_RSdztC2P
+";
+    const ADMIN_EMAIL = "cihat0055.ck@gmail.com";
+
+    const DEFAULT_IMAGE_URL = "https://upload.wikimedia.org/wikipedia/commons/thumb/7/70/Red_Dead_Redemption_2_map.jpg/1280px-Red_Dead_Redemption_2_map.jpg";
+
+    const emailInput = document.getElementById("emailInput");
+    const passwordInput = document.getElementById("passwordInput");
+    const loginBtn = document.getElementById("loginBtn");
+    const logoutBtn = document.getElementById("logoutBtn");
+    const loggedOutBox = document.getElementById("loggedOutBox");
+    const loggedInBox = document.getElementById("loggedInBox");
+    const loggedInText = document.getElementById("loggedInText");
+    const authStatus = document.getElementById("authStatus");
+    const viewerModeBadge = document.getElementById("viewerModeBadge");
+    const editorPanel = document.getElementById("editorPanel");
+
+    const markerNameInput = document.getElementById("markerName");
+    const markerDescriptionInput = document.getElementById("markerDescription");
+    const markerXInput = document.getElementById("markerX");
+    const markerYInput = document.getElementById("markerY");
+    const saveMarkerBtn = document.getElementById("saveMarkerBtn");
+    const newMarkerBtn = document.getElementById("newMarkerBtn");
+    const deleteMarkerBtn = document.getElementById("deleteMarkerBtn");
+    const markerList = document.getElementById("markerList");
+
+    let supabase = null;
+    let map = null;
+    let imageOverlay = null;
+    let markersLayer = null;
+    let currentUser = null;
+    let markers = [];
+    let selectedMarkerId = null;
+
+    function setStatus(message, type = "") {
+      authStatus.textContent = message;
+      authStatus.className = "status";
+      if (type) authStatus.classList.add(type);
+    }
+
+    function initMap() {
+      if (map) return;
+
+      map = L.map("map", {
+        crs: L.CRS.Simple,
+        minZoom: -2,
+        maxZoom: 3,
+        zoomControl: true,
+        attributionControl: false
+      });
+
+      const bounds = [[0, 0], [100, 100]];
+      imageOverlay = L.imageOverlay(DEFAULT_IMAGE_URL, bounds).addTo(map);
+      map.fitBounds(bounds);
+      map.setMaxBounds([[-10, -10], [110, 110]]);
+      markersLayer = L.layerGroup().addTo(map);
+
+      map.on("click", (event) => {
+        if (!isAdmin()) return;
+        selectedMarkerId = null;
+        fillMarkerForm({
+          title: "",
+          description: "",
+          x: Number(event.latlng.lng.toFixed(2)),
+          y: Number((100 - event.latlng.lat).toFixed(2))
+        });
+        setStatus("Neue Marker-Position übernommen. Name eintragen und speichern.", "success");
+      });
+    }
+
+    function markerIcon() {
+      return L.divIcon({
+        className: "",
+        html: '<div class="custom-pin"></div>',
+        iconSize: [18, 18],
+        iconAnchor: [9, 18]
+      });
+    }
+
+    function escapeHtml(value) {
+      return String(value || "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function renderMarkers() {
+      if (!markersLayer) return;
+      markersLayer.clearLayers();
+      markerList.innerHTML = "";
+
+      if (markers.length === 0) {
+        markerList.innerHTML = '<div class="small">Noch keine Marker vorhanden.</div>';
+        return;
+      }
+
+      markers.forEach((item) => {
+        const lat = 100 - Number(item.y);
+        const lng = Number(item.x);
+        const leafletMarker = L.marker([lat, lng], { icon: markerIcon() }).addTo(markersLayer);
+
+        const popupHtml = `<strong>${escapeHtml(item.title)}</strong><br>${escapeHtml(item.description || "")}`;
+        leafletMarker.bindPopup(popupHtml);
+
+        leafletMarker.on("click", () => {
+          focusMarker(item.id);
+          if (isAdmin()) loadMarkerIntoForm(item.id);
+        });
+
+        const card = document.createElement("div");
+        card.className = "marker-item";
+        card.innerHTML = `
+          <h3>${escapeHtml(item.title)}</h3>
+          <p>${escapeHtml(item.description || "Keine Beschreibung")}</p>
+          <p>X: ${Number(item.x).toFixed(2)} · Y: ${Number(item.y).toFixed(2)}</p>
+        `;
+        card.addEventListener("click", () => {
+          focusMarker(item.id);
+          if (isAdmin()) loadMarkerIntoForm(item.id);
+        });
+        markerList.appendChild(card);
+      });
+    }
+
+    function fillMarkerForm(data) {
+      markerNameInput.value = data.title || "";
+      markerDescriptionInput.value = data.description || "";
+      markerXInput.value = data.x ?? "";
+      markerYInput.value = data.y ?? "";
+      deleteMarkerBtn.disabled = !selectedMarkerId;
+    }
+
+    function loadMarkerIntoForm(id) {
+      const marker = markers.find((m) => m.id === id);
+      if (!marker) return;
+      selectedMarkerId = id;
+      fillMarkerForm(marker);
+      setStatus(`Marker „${marker.title}“ geladen.`, "success");
+    }
+
+    function focusMarker(id) {
+      const marker = markers.find((m) => m.id === id);
+      if (!marker || !map) return;
+      map.setView([100 - Number(marker.y), Number(marker.x)], 0);
+    }
+
+    function isAdmin() {
+      return !!currentUser && currentUser.email && currentUser.email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+    }
+
+    function updateAuthUI() {
+      if (currentUser) {
+        loggedOutBox.classList.add("hidden");
+        loggedInBox.classList.remove("hidden");
+        loggedInText.textContent = `Angemeldet als ${currentUser.email}`;
+      } else {
+        loggedOutBox.classList.remove("hidden");
+        loggedInBox.classList.add("hidden");
+      }
+
+      if (isAdmin()) {
+        editorPanel.classList.remove("hidden");
+        viewerModeBadge.textContent = "Admin-Modus";
+      } else {
+        editorPanel.classList.add("hidden");
+        viewerModeBadge.textContent = "Besucher-Modus";
+      }
+    }
+
+    async function initSupabase() {
+      if (
+        !SUPABASE_URL ||
+        SUPABASE_URL.includes("HIER_DEINE_SUPABASE_URL_EINTRAGEN") ||
+        !SUPABASE_ANON_KEY ||
+        SUPABASE_ANON_KEY.includes("HIER_DEINEN_PUBLISHABLE_KEY_EINTRAGEN") ||
+        !ADMIN_EMAIL ||
+        ADMIN_EMAIL.includes("HIER_DEINE_ADMIN_EMAIL_EINTRAGEN")
+      ) {
+        setStatus("Bitte zuerst im Code SUPABASE_URL, Publishable Key und ADMIN_EMAIL eintragen.", "error");
+        return;
+      }
+
+      try {
+        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const { data, error } = await supabase.auth.getUser();
+        if (error) throw error;
+        currentUser = data.user || null;
+        updateAuthUI();
+        await loadMarkers();
+        setStatus(currentUser ? "Verbunden und Benutzer erkannt." : "Verbunden. Besucher-Modus aktiv.", "success");
+      } catch (error) {
+        console.error(error);
+        setStatus("Verbindung zu Supabase fehlgeschlagen. Prüfe URL und Key.", "error");
+      }
+    }
+
+    async function loadMarkers() {
+      if (!supabase) return;
+
+      const { data, error } = await supabase
+        .from("markers")
+        .select("id,title,description,x,y,created_by,created_at,updated_at")
+        .order("created_at", { ascending: true });
+
+      if (error) {
+        console.error(error);
+        setStatus("Marker konnten nicht geladen werden. Prüfe Tabelle und RLS.", "error");
+        return;
+      }
+
+      markers = data || [];
+      renderMarkers();
+    }
+
+    async function login() {
+      if (!supabase) {
+        setStatus("Supabase ist noch nicht bereit.", "error");
+        return;
+      }
+
+      const email = emailInput.value.trim().toLowerCase();
+      const password = passwordInput.value;
+
+      if (!email || !password) {
+        setStatus("Bitte E-Mail und Passwort eingeben.", "error");
+        return;
+      }
+
+      if (email !== ADMIN_EMAIL.toLowerCase()) {
+        setStatus("Nur die festgelegte Admin-E-Mail darf sich einloggen.", "error");
+        return;
+      }
+
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        console.error(error);
+        setStatus("Login fehlgeschlagen.", "error");
+        return;
+      }
+
+      currentUser = data.user;
+      updateAuthUI();
+      setStatus("Admin-Login erfolgreich.", "success");
+    }
+
+    async function logout() {
+      if (!supabase) return;
+      await supabase.auth.signOut();
+      currentUser = null;
+      selectedMarkerId = null;
+      fillMarkerForm({ title: "", description: "", x: "", y: "" });
+      updateAuthUI();
+      setStatus("Abgemeldet. Besucher-Modus aktiv.", "success");
+    }
+
+    function getMarkerPayload() {
+      return {
+        title: markerNameInput.value.trim(),
+        description: markerDescriptionInput.value.trim(),
+        x: Number(markerXInput.value),
+        y: Number(markerYInput.value)
+      };
+    }
+
+    function validateMarkerPayload(payload) {
+      if (!payload.title) return "Bitte einen Namen eingeben.";
+      if (Number.isNaN(payload.x) || payload.x < 0 || payload.x > 100) return "X muss zwischen 0 und 100 liegen.";
+      if (Number.isNaN(payload.y) || payload.y < 0 || payload.y > 100) return "Y muss zwischen 0 und 100 liegen.";
+      return null;
+    }
+
+    async function saveMarker() {
+      if (!isAdmin()) {
+        setStatus("Nur der Admin darf Marker speichern.", "error");
+        return;
+      }
+
+      const payload = getMarkerPayload();
+      const validationError = validateMarkerPayload(payload);
+      if (validationError) {
+        setStatus(validationError, "error");
+        return;
+      }
+
+      if (selectedMarkerId) {
+        const { error } = await supabase
+          .from("markers")
+          .update({
+            title: payload.title,
+            description: payload.description,
+            x: payload.x,
+            y: payload.y,
+            updated_at: new Date().toISOString()
+          })
+          .eq("id", selectedMarkerId);
+
+        if (error) {
+          console.error(error);
+          setStatus("Marker konnte nicht aktualisiert werden.", "error");
+          return;
+        }
+
+        setStatus("Marker aktualisiert.", "success");
+      } else {
+        const { error } = await supabase
+          .from("markers")
+          .insert({
+            title: payload.title,
+            description: payload.description,
+            x: payload.x,
+            y: payload.y,
+            created_by: currentUser.id
+          });
+
+        if (error) {
+          console.error(error);
+          setStatus("Marker konnte nicht erstellt werden.", "error");
+          return;
+        }
+
+        setStatus("Marker erstellt.", "success");
+      }
+
+      await loadMarkers();
+      selectedMarkerId = null;
+      fillMarkerForm({ title: "", description: "", x: "", y: "" });
+    }
+
+    async function deleteMarker() {
+      if (!isAdmin()) {
+        setStatus("Nur der Admin darf Marker löschen.", "error");
+        return;
+      }
+      if (!selectedMarkerId) {
+        setStatus("Bitte zuerst einen Marker auswählen.", "error");
+        return;
+      }
+
+      const { error } = await supabase
+        .from("markers")
+        .delete()
+        .eq("id", selectedMarkerId);
+
+      if (error) {
+        console.error(error);
+        setStatus("Marker konnte nicht gelöscht werden.", "error");
+        return;
+      }
+
+      selectedMarkerId = null;
+      fillMarkerForm({ title: "", description: "", x: "", y: "" });
+      await loadMarkers();
+      setStatus("Marker gelöscht.", "success");
+    }
+
+    function resetMarkerForm() {
+      selectedMarkerId = null;
+      fillMarkerForm({ title: "", description: "", x: "", y: "" });
+      setStatus("Formular zurückgesetzt.", "success");
+    }
+
+    loginBtn.addEventListener("click", login);
+    logoutBtn.addEventListener("click", logout);
+    saveMarkerBtn.addEventListener("click", saveMarker);
+    deleteMarkerBtn.addEventListener("click", deleteMarker);
+    newMarkerBtn.addEventListener("click", resetMarkerForm);
+
+    initMap();
+    initSupabase();
+  </script>
+</body>
+</html>
