@@ -184,6 +184,11 @@
       cursor: pointer;
     }
 
+    .marker-item.active {
+      border-color: #60a5fa;
+      box-shadow: 0 0 0 1px #60a5fa inset;
+    }
+
     .marker-item h3 {
       margin: 0 0 4px;
       font-size: 15px;
@@ -278,7 +283,7 @@
         <h2>Marker bearbeiten</h2>
         <p class="small">
           Klicke auf eine freie Stelle der Karte für einen neuen Marker.
-          Klicke auf einen vorhandenen Marker, um ihn zu bearbeiten.
+          Klicke auf einen vorhandenen Marker, um ihn zu bearbeiten oder zu löschen.
         </p>
 
         <label for="markerName">Name</label>
@@ -296,7 +301,7 @@
         <div class="row">
           <button id="saveMarkerBtn">Speichern</button>
           <button id="newMarkerBtn" class="secondary">Neu</button>
-          <button id="deleteMarkerBtn" class="danger">Löschen</button>
+          <button id="deleteMarkerBtn" class="danger" disabled>Löschen</button>
         </div>
       </div>
 
@@ -350,6 +355,7 @@
     let currentUser = null;
     let markers = [];
     let selectedMarkerId = null;
+    let markerMap = new Map();
 
     function setStatus(message, type = "") {
       authStatus.textContent = message;
@@ -382,15 +388,47 @@
       }
     }
 
+    function fillMarkerForm(data) {
+      markerNameInput.value = data.title || "";
+      markerDescriptionInput.value = data.description || "";
+      markerXInput.value = data.x ?? "";
+      markerYInput.value = data.y ?? "";
+      deleteMarkerBtn.disabled = !(selectedMarkerId !== null && selectedMarkerId !== undefined);
+      highlightSelectedMarker();
+    }
+
     function resetMarkerForm() {
       selectedMarkerId = null;
-      fillMarkerForm({
-        title: "",
-        description: "",
-        x: "",
-        y: ""
-      });
+      markerNameInput.value = "";
+      markerDescriptionInput.value = "";
+      markerXInput.value = "";
+      markerYInput.value = "";
       deleteMarkerBtn.disabled = true;
+      highlightSelectedMarker();
+    }
+
+    function selectMarker(id, options = {}) {
+      const marker = markers.find((m) => Number(m.id) === Number(id));
+      if (!marker) return;
+
+      selectedMarkerId = Number(marker.id);
+      fillMarkerForm(marker);
+
+      if (options.focus !== false) {
+        focusMarker(marker.id);
+      }
+
+      if (options.status !== false) {
+        setStatus(`Marker „${marker.title}“ geladen.`, "success");
+      }
+    }
+
+    function highlightSelectedMarker() {
+      const items = markerList.querySelectorAll(".marker-item");
+      items.forEach((item) => {
+        const id = Number(item.dataset.id);
+        item.classList.toggle("active", id === Number(selectedMarkerId));
+      });
     }
 
     function initMap() {
@@ -408,7 +446,6 @@
       imageOverlay = L.imageOverlay(DEFAULT_IMAGE_URL, bounds).addTo(map);
 
       imageOverlay.on("load", function () {
-        console.log("Kartenbild geladen.");
         map.fitBounds(bounds);
         map.invalidateSize();
       });
@@ -463,25 +500,8 @@
         .replaceAll("'", "&#039;");
     }
 
-    function fillMarkerForm(data) {
-      markerNameInput.value = data.title || "";
-      markerDescriptionInput.value = data.description || "";
-      markerXInput.value = data.x ?? "";
-      markerYInput.value = data.y ?? "";
-      deleteMarkerBtn.disabled = !selectedMarkerId;
-    }
-
-    function loadMarkerIntoForm(id) {
-      const marker = markers.find((m) => m.id === id);
-      if (!marker) return;
-
-      selectedMarkerId = id;
-      fillMarkerForm(marker);
-      setStatus(`Marker „${marker.title}“ geladen.`, "success");
-    }
-
     function focusMarker(id) {
-      const marker = markers.find((m) => m.id === id);
+      const marker = markers.find((m) => Number(m.id) === Number(id));
       if (!marker || !map) return;
 
       map.setView([1000 - (Number(marker.y) * 10), Number(marker.x) * 16], -1);
@@ -492,6 +512,7 @@
 
       markersLayer.clearLayers();
       markerList.innerHTML = "";
+      markerMap.clear();
 
       if (markers.length === 0) {
         markerList.innerHTML = '<div class="small">Noch keine Marker vorhanden.</div>';
@@ -503,6 +524,7 @@
         const lng = Number(item.x) * 16;
 
         const leafletMarker = L.marker([lat, lng], { icon: markerIcon() }).addTo(markersLayer);
+        markerMap.set(Number(item.id), leafletMarker);
 
         const popupHtml = `<strong>${escapeHtml(item.title)}</strong><br>${escapeHtml(item.description || "")}`;
         leafletMarker.bindPopup(popupHtml);
@@ -511,12 +533,16 @@
           if (e.originalEvent) {
             e.originalEvent.stopPropagation();
           }
-          focusMarker(item.id);
-          if (isAdmin()) loadMarkerIntoForm(item.id);
+          if (isAdmin()) {
+            selectMarker(item.id, { focus: true, status: true });
+          } else {
+            focusMarker(item.id);
+          }
         });
 
         const card = document.createElement("div");
         card.className = "marker-item";
+        card.dataset.id = item.id;
         card.innerHTML = `
           <h3>${escapeHtml(item.title)}</h3>
           <p>${escapeHtml(item.description || "Keine Beschreibung")}</p>
@@ -525,16 +551,24 @@
 
         card.addEventListener("click", (e) => {
           e.stopPropagation();
-          focusMarker(item.id);
-          if (isAdmin()) loadMarkerIntoForm(item.id);
+          if (isAdmin()) {
+            selectMarker(item.id, { focus: true, status: true });
+          } else {
+            focusMarker(item.id);
+          }
         });
 
         markerList.appendChild(card);
       });
+
+      highlightSelectedMarker();
     }
 
-    async function loadMarkers() {
-      if (!supabaseClient) return;
+    async function loadMarkers(options = {}) {
+      if (!supabaseClient) return false;
+
+      const { preserveSelection = true } = options;
+      const previousSelectedId = selectedMarkerId;
 
       const { data, error } = await supabaseClient
         .from("markers")
@@ -544,11 +578,25 @@
       if (error) {
         console.error(error);
         setStatus("Marker-Fehler: " + (error.message || String(error)), "error");
-        return;
+        return false;
       }
 
       markers = data || [];
       renderMarkers();
+
+      if (preserveSelection && previousSelectedId !== null) {
+        const stillExists = markers.find((m) => Number(m.id) === Number(previousSelectedId));
+        if (stillExists) {
+          selectedMarkerId = Number(previousSelectedId);
+          fillMarkerForm(stillExists);
+        } else {
+          resetMarkerForm();
+        }
+      } else if (!preserveSelection) {
+        resetMarkerForm();
+      }
+
+      return true;
     }
 
     async function initSupabase() {
@@ -563,13 +611,13 @@
         currentUser = null;
         updateAuthUI();
 
-        await loadMarkers();
+        await loadMarkers({ preserveSelection: false });
         setStatus("Verbunden. Besucher-Modus aktiv.", "success");
 
         supabaseClient.auth.onAuthStateChange(async (_event, session) => {
           currentUser = session?.user || null;
           updateAuthUI();
-          await loadMarkers();
+          await loadMarkers({ preserveSelection: false });
 
           if (currentUser) {
             setStatus("Verbunden und Benutzer erkannt.", "success");
@@ -659,6 +707,8 @@
       }
 
       if (selectedMarkerId !== null) {
+        const markerIdToUpdate = selectedMarkerId;
+
         const { error } = await supabaseClient
           .from("markers")
           .update({
@@ -668,7 +718,7 @@
             y: payload.y,
             updated_at: new Date().toISOString()
           })
-          .eq("id", selectedMarkerId);
+          .eq("id", markerIdToUpdate);
 
         if (error) {
           console.error(error);
@@ -676,9 +726,11 @@
           return;
         }
 
+        await loadMarkers({ preserveSelection: true });
+        selectMarker(markerIdToUpdate, { focus: false, status: false });
         setStatus("Marker aktualisiert.", "success");
       } else {
-        const { error } = await supabaseClient
+        const { data, error } = await supabaseClient
           .from("markers")
           .insert({
             title: payload.title,
@@ -686,7 +738,9 @@
             x: payload.x,
             y: payload.y,
             created_by: currentUser.id
-          });
+          })
+          .select("id")
+          .single();
 
         if (error) {
           console.error(error);
@@ -694,11 +748,14 @@
           return;
         }
 
+        await loadMarkers({ preserveSelection: false });
+
+        if (data?.id) {
+          selectMarker(data.id, { focus: false, status: false });
+        }
+
         setStatus("Neuer Marker erstellt.", "success");
       }
-
-      await loadMarkers();
-      resetMarkerForm();
     }
 
     async function deleteMarker() {
@@ -726,8 +783,7 @@
       }
 
       selectedMarkerId = null;
-      await loadMarkers();
-      resetMarkerForm();
+      await loadMarkers({ preserveSelection: false });
       setStatus("Marker gelöscht.", "success");
     }
 
