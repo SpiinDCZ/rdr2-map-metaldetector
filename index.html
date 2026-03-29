@@ -13,32 +13,38 @@
   />
   <style>
     * { box-sizing: border-box; }
+
     body {
       margin: 0;
       font-family: Arial, Helvetica, sans-serif;
       background: #111827;
       color: #f9fafb;
     }
+
     .app {
       display: grid;
       grid-template-columns: 340px 1fr;
       min-height: 100vh;
     }
+
     .sidebar {
       background: #111827;
       border-right: 1px solid #263041;
       padding: 20px;
       overflow-y: auto;
     }
+
     .sidebar h1 {
       margin: 0 0 8px;
       font-size: 28px;
     }
+
     .sidebar p {
       color: #d1d5db;
       font-size: 14px;
       line-height: 1.5;
     }
+
     .panel {
       background: #1f2937;
       border: 1px solid #374151;
@@ -46,14 +52,17 @@
       padding: 14px;
       margin-top: 14px;
     }
+
     .panel h2 {
       margin: 0 0 10px;
       font-size: 16px;
     }
+
     .small {
       font-size: 12px;
       color: #9ca3af;
     }
+
     .status {
       font-size: 13px;
       padding: 10px 12px;
@@ -64,22 +73,26 @@
       border: 1px solid #1d4ed8;
       word-break: break-word;
     }
+
     .status.error {
       background: #450a0a;
       color: #fee2e2;
       border-color: #dc2626;
     }
+
     .status.success {
       background: #052e16;
       color: #dcfce7;
       border-color: #16a34a;
     }
+
     label {
       display: block;
       font-size: 13px;
       margin: 10px 0 6px;
       color: #e5e7eb;
     }
+
     input, textarea {
       width: 100%;
       padding: 10px 12px;
@@ -89,16 +102,19 @@
       color: #f9fafb;
       font-size: 14px;
     }
+
     textarea {
       min-height: 84px;
       resize: vertical;
     }
+
     .row {
       display: flex;
       gap: 8px;
       margin-top: 12px;
       flex-wrap: wrap;
     }
+
     button {
       border: none;
       border-radius: 12px;
@@ -108,22 +124,27 @@
       background: #2563eb;
       color: white;
     }
+
     button.secondary { background: #374151; }
     button.danger { background: #dc2626; }
+
     button:disabled {
       opacity: 0.5;
       cursor: not-allowed;
     }
+
     .map-area {
       position: relative;
       min-height: 100vh;
       background: #000;
     }
+
     #map {
       width: 100%;
       height: 100vh;
       background: #000;
     }
+
     .map-topbar {
       position: absolute;
       top: 14px;
@@ -138,6 +159,7 @@
       padding: 10px 12px;
       backdrop-filter: blur(6px);
     }
+
     .badge {
       font-size: 12px;
       padding: 6px 10px;
@@ -145,6 +167,7 @@
       background: #374151;
       color: #f3f4f6;
     }
+
     .marker-list {
       display: grid;
       gap: 10px;
@@ -152,6 +175,7 @@
       max-height: 360px;
       overflow-y: auto;
     }
+
     .marker-item {
       padding: 12px;
       border-radius: 14px;
@@ -159,24 +183,31 @@
       background: #0f172a;
       cursor: pointer;
     }
+
     .marker-item.active {
       border-color: #60a5fa;
       box-shadow: 0 0 0 1px #60a5fa inset;
     }
+
     .marker-item h3 {
       margin: 0 0 4px;
       font-size: 15px;
     }
+
     .marker-item p {
       margin: 0 0 6px;
       color: #cbd5e1;
       font-size: 13px;
     }
+
     .hidden { display: none !important; }
+
     .leaflet-container {
       background: #0b0b0b;
       font-family: Arial, Helvetica, sans-serif;
+      image-rendering: auto;
     }
+
     .custom-pin {
       width: 18px;
       height: 18px;
@@ -186,6 +217,7 @@
       border: 2px solid white;
       box-shadow: 0 4px 10px rgba(0,0,0,0.4);
     }
+
     .custom-pin::after {
       content: "";
       position: absolute;
@@ -196,14 +228,17 @@
       top: 4px;
       left: 4px;
     }
+
     @media (max-width: 980px) {
       .app {
         grid-template-columns: 1fr;
       }
+
       .sidebar {
         border-right: none;
         border-bottom: 1px solid #263041;
       }
+
       .map-area, #map {
         min-height: 75vh;
         height: 75vh;
@@ -321,7 +356,6 @@
     let currentUser = null;
     let markers = [];
     let selectedMarkerId = null;
-    let isApplyingRemoteUpdate = false;
     let suppressNextRealtime = false;
 
     function setStatus(message, type = "") {
@@ -399,7 +433,9 @@
     function focusMarker(id) {
       const marker = markers.find((m) => Number(m.id) === Number(id));
       if (!marker || !map) return;
-      map.setView(markerToLatLng(marker), -1);
+      map.setView(markerToLatLng(marker), map.getZoom(), {
+        animate: false
+      });
     }
 
     function selectMarker(id, { focus = true, status = true } = {}) {
@@ -454,8 +490,15 @@
       }
 
       markers.forEach((item) => {
-        const leafletMarker = L.marker(markerToLatLng(item), { icon: markerIcon() }).addTo(markersLayer);
-        leafletMarker.bindPopup(`<strong>${escapeHtml(item.title)}</strong><br>${escapeHtml(item.description || "")}`);
+        const leafletMarker = L.marker(markerToLatLng(item), {
+          icon: markerIcon(),
+          keyboard: false
+        }).addTo(markersLayer);
+
+        leafletMarker.bindPopup(
+          `<strong>${escapeHtml(item.title)}</strong><br>${escapeHtml(item.description || "")}`,
+          { autoPan: false }
+        );
 
         leafletMarker.on("click", (e) => {
           if (e.originalEvent) e.originalEvent.stopPropagation();
@@ -494,34 +537,45 @@
 
       map = L.map("map", {
         crs: L.CRS.Simple,
-        minZoom: -2,
-        maxZoom: 3,
+        minZoom: -1.5,
+        maxZoom: 2,
         zoomControl: true,
-        attributionControl: false
+        attributionControl: false,
+        zoomAnimation: false,
+        fadeAnimation: false,
+        markerZoomAnimation: false,
+        preferCanvas: true,
+        zoomSnap: 0.25,
+        zoomDelta: 0.25,
+        wheelPxPerZoomLevel: 160,
+        inertia: true,
+        inertiaDeceleration: 3000,
+        easeLinearity: 0.15
       });
 
       const bounds = [[0, 0], [1000, 1600]];
       imageOverlay = L.imageOverlay(DEFAULT_IMAGE_URL, bounds).addTo(map);
 
       imageOverlay.on("load", function () {
-        map.fitBounds(bounds);
-        map.invalidateSize();
+        map.fitBounds(bounds, { animate: false });
+        map.invalidateSize(false);
       });
 
       imageOverlay.on("error", function () {
         setStatus("Kartenbild konnte nicht geladen werden: " + DEFAULT_IMAGE_URL, "error");
       });
 
-      map.fitBounds(bounds);
+      map.fitBounds(bounds, { animate: false });
       map.setMaxBounds([[-100, -100], [1100, 1700]]);
       markersLayer = L.layerGroup().addTo(map);
 
       setTimeout(() => {
-        map.invalidateSize();
-        map.fitBounds(bounds);
+        map.invalidateSize(false);
       }, 300);
 
-      window.addEventListener("resize", () => map.invalidateSize());
+      window.addEventListener("resize", () => {
+        map.invalidateSize(false);
+      });
 
       map.on("click", (event) => {
         if (!isAdmin()) return;
@@ -566,8 +620,6 @@
               return;
             }
 
-            isApplyingRemoteUpdate = true;
-
             if (payload.eventType === "INSERT" && payload.new) {
               upsertLocalMarker(payload.new);
             } else if (payload.eventType === "UPDATE" && payload.new) {
@@ -578,8 +630,6 @@
             } else if (payload.eventType === "DELETE" && payload.old) {
               removeLocalMarker(payload.old.id);
             }
-
-            isApplyingRemoteUpdate = false;
           }
         )
         .subscribe();
