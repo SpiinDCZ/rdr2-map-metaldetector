@@ -277,7 +277,7 @@
       <div class="panel hidden" id="editorPanel">
         <h2>Marker bearbeiten</h2>
         <p class="small">
-          Klicke im Admin-Modus auf die Karte, um einen Marker an der geklickten Stelle vorzubereiten.
+          Klicke auf eine freie Stelle der Karte für einen neuen Marker.
           Klicke auf einen vorhandenen Marker, um ihn zu bearbeiten.
         </p>
 
@@ -382,6 +382,17 @@
       }
     }
 
+    function resetMarkerForm() {
+      selectedMarkerId = null;
+      fillMarkerForm({
+        title: "",
+        description: "",
+        x: "",
+        y: ""
+      });
+      deleteMarkerBtn.disabled = true;
+    }
+
     function initMap() {
       if (map) return;
 
@@ -422,7 +433,7 @@
       map.on("click", (event) => {
         if (!isAdmin()) return;
 
-        selectedMarkerId = null;
+        resetMarkerForm();
         fillMarkerForm({
           title: "",
           description: "",
@@ -430,7 +441,7 @@
           y: Number(((1000 - event.latlng.lat) / 10).toFixed(2))
         });
 
-        setStatus("Neue Marker-Position übernommen. Name eintragen und speichern.", "success");
+        setStatus("Neuer Marker vorbereitet. Name eingeben und speichern.", "success");
       });
     }
 
@@ -608,15 +619,7 @@
       }
 
       currentUser = null;
-      selectedMarkerId = null;
-
-      fillMarkerForm({
-        title: "",
-        description: "",
-        x: "",
-        y: ""
-      });
-
+      resetMarkerForm();
       updateAuthUI();
       setStatus("Abgemeldet. Besucher-Modus aktiv.", "success");
     }
@@ -651,7 +654,7 @@
         return;
       }
 
-      if (selectedMarkerId) {
+      if (selectedMarkerId !== null) {
         const { error } = await supabaseClient
           .from("markers")
           .update({
@@ -687,17 +690,11 @@
           return;
         }
 
-        setStatus("Marker erstellt.", "success");
+        setStatus("Neuer Marker erstellt.", "success");
       }
 
       await loadMarkers();
-      selectedMarkerId = null;
-      fillMarkerForm({
-        title: "",
-        description: "",
-        x: "",
-        y: ""
-      });
+      resetMarkerForm();
     }
 
     async function deleteMarker() {
@@ -706,7 +703,7 @@
         return;
       }
 
-      if (!selectedMarkerId) {
+      if (selectedMarkerId === null) {
         setStatus("Bitte zuerst einen Marker auswählen.", "error");
         return;
       }
@@ -722,27 +719,13 @@
         return;
       }
 
-      selectedMarkerId = null;
-      fillMarkerForm({
-        title: "",
-        description: "",
-        x: "",
-        y: ""
-      });
-
       await loadMarkers();
+      resetMarkerForm();
       setStatus("Marker gelöscht.", "success");
     }
 
-    function resetMarkerForm() {
-      selectedMarkerId = null;
-      fillMarkerForm({
-        title: "",
-        description: "",
-        x: "",
-        y: ""
-      });
-
+    function resetMarkerAndStatus() {
+      resetMarkerForm();
       setStatus("Formular zurückgesetzt.", "success");
     }
 
@@ -750,7 +733,7 @@
     logoutBtn.addEventListener("click", logout);
     saveMarkerBtn.addEventListener("click", saveMarker);
     deleteMarkerBtn.addEventListener("click", deleteMarker);
-    newMarkerBtn.addEventListener("click", resetMarkerForm);
+    newMarkerBtn.addEventListener("click", resetMarkerAndStatus);
 
     initMap();
     initSupabase();
