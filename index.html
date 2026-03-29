@@ -13,38 +13,32 @@
   />
   <style>
     * { box-sizing: border-box; }
-
     body {
       margin: 0;
       font-family: Arial, Helvetica, sans-serif;
       background: #111827;
       color: #f9fafb;
     }
-
     .app {
       display: grid;
       grid-template-columns: 340px 1fr;
       min-height: 100vh;
     }
-
     .sidebar {
       background: #111827;
       border-right: 1px solid #263041;
       padding: 20px;
       overflow-y: auto;
     }
-
     .sidebar h1 {
       margin: 0 0 8px;
       font-size: 28px;
     }
-
     .sidebar p {
       color: #d1d5db;
       font-size: 14px;
       line-height: 1.5;
     }
-
     .panel {
       background: #1f2937;
       border: 1px solid #374151;
@@ -52,17 +46,14 @@
       padding: 14px;
       margin-top: 14px;
     }
-
     .panel h2 {
       margin: 0 0 10px;
       font-size: 16px;
     }
-
     .small {
       font-size: 12px;
       color: #9ca3af;
     }
-
     .status {
       font-size: 13px;
       padding: 10px 12px;
@@ -73,26 +64,22 @@
       border: 1px solid #1d4ed8;
       word-break: break-word;
     }
-
     .status.error {
       background: #450a0a;
       color: #fee2e2;
       border-color: #dc2626;
     }
-
     .status.success {
       background: #052e16;
       color: #dcfce7;
       border-color: #16a34a;
     }
-
     label {
       display: block;
       font-size: 13px;
       margin: 10px 0 6px;
       color: #e5e7eb;
     }
-
     input, textarea {
       width: 100%;
       padding: 10px 12px;
@@ -102,19 +89,16 @@
       color: #f9fafb;
       font-size: 14px;
     }
-
     textarea {
       min-height: 84px;
       resize: vertical;
     }
-
     .row {
       display: flex;
       gap: 8px;
       margin-top: 12px;
       flex-wrap: wrap;
     }
-
     button {
       border: none;
       border-radius: 12px;
@@ -124,27 +108,22 @@
       background: #2563eb;
       color: white;
     }
-
     button.secondary { background: #374151; }
     button.danger { background: #dc2626; }
-
     button:disabled {
       opacity: 0.5;
       cursor: not-allowed;
     }
-
     .map-area {
       position: relative;
       min-height: 100vh;
       background: #000;
     }
-
     #map {
       width: 100%;
       height: 100vh;
       background: #000;
     }
-
     .map-topbar {
       position: absolute;
       top: 14px;
@@ -159,7 +138,6 @@
       padding: 10px 12px;
       backdrop-filter: blur(6px);
     }
-
     .badge {
       font-size: 12px;
       padding: 6px 10px;
@@ -167,7 +145,6 @@
       background: #374151;
       color: #f3f4f6;
     }
-
     .marker-list {
       display: grid;
       gap: 10px;
@@ -175,7 +152,6 @@
       max-height: 360px;
       overflow-y: auto;
     }
-
     .marker-item {
       padding: 12px;
       border-radius: 14px;
@@ -183,30 +159,24 @@
       background: #0f172a;
       cursor: pointer;
     }
-
     .marker-item.active {
       border-color: #60a5fa;
       box-shadow: 0 0 0 1px #60a5fa inset;
     }
-
     .marker-item h3 {
       margin: 0 0 4px;
       font-size: 15px;
     }
-
     .marker-item p {
       margin: 0 0 6px;
       color: #cbd5e1;
       font-size: 13px;
     }
-
     .hidden { display: none !important; }
-
     .leaflet-container {
       background: #0b0b0b;
       font-family: Arial, Helvetica, sans-serif;
     }
-
     .custom-pin {
       width: 18px;
       height: 18px;
@@ -216,7 +186,6 @@
       border: 2px solid white;
       box-shadow: 0 4px 10px rgba(0,0,0,0.4);
     }
-
     .custom-pin::after {
       content: "";
       position: absolute;
@@ -227,17 +196,14 @@
       top: 4px;
       left: 4px;
     }
-
     @media (max-width: 980px) {
       .app {
         grid-template-columns: 1fr;
       }
-
       .sidebar {
         border-right: none;
         border-bottom: 1px solid #263041;
       }
-
       .map-area, #map {
         min-height: 75vh;
         height: 75vh;
@@ -282,8 +248,7 @@
       <div class="panel hidden" id="editorPanel">
         <h2>Marker bearbeiten</h2>
         <p class="small">
-          Klicke auf eine freie Stelle der Karte für einen neuen Marker.
-          Klicke auf einen vorhandenen Marker, um ihn zu bearbeiten oder zu löschen.
+          Klick auf freie Stelle = neuer Marker. Klick auf vorhandenen Marker = bearbeiten/löschen.
         </p>
 
         <label for="markerName">Name</label>
@@ -307,7 +272,7 @@
 
       <div class="panel">
         <h2>Marker</h2>
-        <p class="small">Alle gespeicherten Marker werden aus Supabase geladen.</p>
+        <p class="small">Alle gespeicherten Marker.</p>
         <div id="markerList" class="marker-list"></div>
       </div>
     </aside>
@@ -349,13 +314,15 @@
     const markerList = document.getElementById("markerList");
 
     let supabaseClient = null;
+    let realtimeChannel = null;
     let map = null;
     let imageOverlay = null;
     let markersLayer = null;
     let currentUser = null;
     let markers = [];
     let selectedMarkerId = null;
-    let markerMap = new Map();
+    let isApplyingRemoteUpdate = false;
+    let suppressNextRealtime = false;
 
     function setStatus(message, type = "") {
       authStatus.textContent = message;
@@ -388,6 +355,28 @@
       }
     }
 
+    function markerToLatLng(marker) {
+      return [1000 - (Number(marker.y) * 10), Number(marker.x) * 16];
+    }
+
+    function markerIcon() {
+      return L.divIcon({
+        className: "",
+        html: '<div class="custom-pin"></div>',
+        iconSize: [18, 18],
+        iconAnchor: [9, 18]
+      });
+    }
+
+    function escapeHtml(value) {
+      return String(value || "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
     function fillMarkerForm(data) {
       markerNameInput.value = data.title || "";
       markerDescriptionInput.value = data.description || "";
@@ -407,20 +396,19 @@
       highlightSelectedMarker();
     }
 
-    function selectMarker(id, options = {}) {
+    function focusMarker(id) {
+      const marker = markers.find((m) => Number(m.id) === Number(id));
+      if (!marker || !map) return;
+      map.setView(markerToLatLng(marker), -1);
+    }
+
+    function selectMarker(id, { focus = true, status = true } = {}) {
       const marker = markers.find((m) => Number(m.id) === Number(id));
       if (!marker) return;
-
       selectedMarkerId = Number(marker.id);
       fillMarkerForm(marker);
-
-      if (options.focus !== false) {
-        focusMarker(marker.id);
-      }
-
-      if (options.status !== false) {
-        setStatus(`Marker „${marker.title}“ geladen.`, "success");
-      }
+      if (focus) focusMarker(marker.id);
+      if (status) setStatus(`Marker „${marker.title}“ geladen.`, "success");
     }
 
     function highlightSelectedMarker() {
@@ -429,6 +417,76 @@
         const id = Number(item.dataset.id);
         item.classList.toggle("active", id === Number(selectedMarkerId));
       });
+    }
+
+    function sortMarkers() {
+      markers.sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
+    }
+
+    function upsertLocalMarker(marker) {
+      const index = markers.findIndex((m) => Number(m.id) === Number(marker.id));
+      if (index >= 0) {
+        markers[index] = { ...markers[index], ...marker };
+      } else {
+        markers.push(marker);
+      }
+      sortMarkers();
+      renderMarkers();
+    }
+
+    function removeLocalMarker(id) {
+      markers = markers.filter((m) => Number(m.id) !== Number(id));
+      if (Number(selectedMarkerId) === Number(id)) {
+        resetMarkerForm();
+      }
+      renderMarkers();
+    }
+
+    function renderMarkers() {
+      if (!markersLayer) return;
+
+      markersLayer.clearLayers();
+      markerList.innerHTML = "";
+
+      if (markers.length === 0) {
+        markerList.innerHTML = '<div class="small">Noch keine Marker vorhanden.</div>';
+        return;
+      }
+
+      markers.forEach((item) => {
+        const leafletMarker = L.marker(markerToLatLng(item), { icon: markerIcon() }).addTo(markersLayer);
+        leafletMarker.bindPopup(`<strong>${escapeHtml(item.title)}</strong><br>${escapeHtml(item.description || "")}`);
+
+        leafletMarker.on("click", (e) => {
+          if (e.originalEvent) e.originalEvent.stopPropagation();
+          if (isAdmin()) {
+            selectMarker(item.id, { focus: true, status: true });
+          } else {
+            focusMarker(item.id);
+          }
+        });
+
+        const card = document.createElement("div");
+        card.className = "marker-item";
+        card.dataset.id = item.id;
+        card.innerHTML = `
+          <h3>${escapeHtml(item.title)}</h3>
+          <p>${escapeHtml(item.description || "Keine Beschreibung")}</p>
+          <p>X: ${Number(item.x).toFixed(2)} · Y: ${Number(item.y).toFixed(2)}</p>
+        `;
+        card.addEventListener("click", (e) => {
+          e.stopPropagation();
+          if (isAdmin()) {
+            selectMarker(item.id, { focus: true, status: true });
+          } else {
+            focusMarker(item.id);
+          }
+        });
+
+        markerList.appendChild(card);
+      });
+
+      highlightSelectedMarker();
     }
 
     function initMap() {
@@ -463,9 +521,7 @@
         map.fitBounds(bounds);
       }, 300);
 
-      window.addEventListener("resize", () => {
-        map.invalidateSize();
-      });
+      window.addEventListener("resize", () => map.invalidateSize());
 
       map.on("click", (event) => {
         if (!isAdmin()) return;
@@ -477,126 +533,56 @@
           x: Number((event.latlng.lng / 16).toFixed(2)),
           y: Number(((1000 - event.latlng.lat) / 10).toFixed(2))
         });
-
         setStatus("Neuer Marker vorbereitet. Name eingeben und speichern.", "success");
       });
     }
 
-    function markerIcon() {
-      return L.divIcon({
-        className: "",
-        html: '<div class="custom-pin"></div>',
-        iconSize: [18, 18],
-        iconAnchor: [9, 18]
-      });
-    }
-
-    function escapeHtml(value) {
-      return String(value || "")
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
-    }
-
-    function focusMarker(id) {
-      const marker = markers.find((m) => Number(m.id) === Number(id));
-      if (!marker || !map) return;
-
-      map.setView([1000 - (Number(marker.y) * 10), Number(marker.x) * 16], -1);
-    }
-
-    function renderMarkers() {
-      if (!markersLayer) return;
-
-      markersLayer.clearLayers();
-      markerList.innerHTML = "";
-      markerMap.clear();
-
-      if (markers.length === 0) {
-        markerList.innerHTML = '<div class="small">Noch keine Marker vorhanden.</div>';
-        return;
-      }
-
-      markers.forEach((item) => {
-        const lat = 1000 - (Number(item.y) * 10);
-        const lng = Number(item.x) * 16;
-
-        const leafletMarker = L.marker([lat, lng], { icon: markerIcon() }).addTo(markersLayer);
-        markerMap.set(Number(item.id), leafletMarker);
-
-        const popupHtml = `<strong>${escapeHtml(item.title)}</strong><br>${escapeHtml(item.description || "")}`;
-        leafletMarker.bindPopup(popupHtml);
-
-        leafletMarker.on("click", (e) => {
-          if (e.originalEvent) {
-            e.originalEvent.stopPropagation();
-          }
-          if (isAdmin()) {
-            selectMarker(item.id, { focus: true, status: true });
-          } else {
-            focusMarker(item.id);
-          }
-        });
-
-        const card = document.createElement("div");
-        card.className = "marker-item";
-        card.dataset.id = item.id;
-        card.innerHTML = `
-          <h3>${escapeHtml(item.title)}</h3>
-          <p>${escapeHtml(item.description || "Keine Beschreibung")}</p>
-          <p>X: ${Number(item.x).toFixed(2)} · Y: ${Number(item.y).toFixed(2)}</p>
-        `;
-
-        card.addEventListener("click", (e) => {
-          e.stopPropagation();
-          if (isAdmin()) {
-            selectMarker(item.id, { focus: true, status: true });
-          } else {
-            focusMarker(item.id);
-          }
-        });
-
-        markerList.appendChild(card);
-      });
-
-      highlightSelectedMarker();
-    }
-
-    async function loadMarkers(options = {}) {
-      if (!supabaseClient) return false;
-
-      const { preserveSelection = true } = options;
-      const previousSelectedId = selectedMarkerId;
-
+    async function fetchMarkers() {
       const { data, error } = await supabaseClient
         .from("markers")
         .select("id,title,description,x,y,created_by,created_at,updated_at")
         .order("created_at", { ascending: true });
 
-      if (error) {
-        console.error(error);
-        setStatus("Marker-Fehler: " + (error.message || String(error)), "error");
-        return false;
-      }
-
+      if (error) throw error;
       markers = data || [];
+      sortMarkers();
       renderMarkers();
+    }
 
-      if (preserveSelection && previousSelectedId !== null) {
-        const stillExists = markers.find((m) => Number(m.id) === Number(previousSelectedId));
-        if (stillExists) {
-          selectedMarkerId = Number(previousSelectedId);
-          fillMarkerForm(stillExists);
-        } else {
-          resetMarkerForm();
-        }
-      } else if (!preserveSelection) {
-        resetMarkerForm();
+    function subscribeToMarkerChanges() {
+      if (!supabaseClient) return;
+      if (realtimeChannel) {
+        supabaseClient.removeChannel(realtimeChannel);
       }
 
-      return true;
+      realtimeChannel = supabaseClient
+        .channel("markers-live")
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "markers" },
+          (payload) => {
+            if (suppressNextRealtime) {
+              suppressNextRealtime = false;
+              return;
+            }
+
+            isApplyingRemoteUpdate = true;
+
+            if (payload.eventType === "INSERT" && payload.new) {
+              upsertLocalMarker(payload.new);
+            } else if (payload.eventType === "UPDATE" && payload.new) {
+              upsertLocalMarker(payload.new);
+              if (Number(selectedMarkerId) === Number(payload.new.id)) {
+                fillMarkerForm(payload.new);
+              }
+            } else if (payload.eventType === "DELETE" && payload.old) {
+              removeLocalMarker(payload.old.id);
+            }
+
+            isApplyingRemoteUpdate = false;
+          }
+        )
+        .subscribe();
     }
 
     async function initSupabase() {
@@ -611,17 +597,18 @@
         currentUser = null;
         updateAuthUI();
 
-        await loadMarkers({ preserveSelection: false });
+        await fetchMarkers();
+        subscribeToMarkerChanges();
         setStatus("Verbunden. Besucher-Modus aktiv.", "success");
 
         supabaseClient.auth.onAuthStateChange(async (_event, session) => {
           currentUser = session?.user || null;
           updateAuthUI();
-          await loadMarkers({ preserveSelection: false });
 
           if (currentUser) {
             setStatus("Verbunden und Benutzer erkannt.", "success");
           } else {
+            resetMarkerForm();
             setStatus("Verbunden. Besucher-Modus aktiv.", "success");
           }
         });
@@ -651,7 +638,6 @@
       }
 
       const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-
       if (error) {
         console.error(error);
         setStatus("Login fehlgeschlagen: " + (error.message || String(error)), "error");
@@ -700,61 +686,63 @@
 
       const payload = getMarkerPayload();
       const validationError = validateMarkerPayload(payload);
-
       if (validationError) {
         setStatus(validationError, "error");
         return;
       }
 
-      if (selectedMarkerId !== null) {
-        const markerIdToUpdate = selectedMarkerId;
+      saveMarkerBtn.disabled = true;
+      deleteMarkerBtn.disabled = true;
 
-        const { error } = await supabaseClient
-          .from("markers")
-          .update({
-            title: payload.title,
-            description: payload.description,
-            x: payload.x,
-            y: payload.y,
-            updated_at: new Date().toISOString()
-          })
-          .eq("id", markerIdToUpdate);
+      try {
+        if (selectedMarkerId !== null) {
+          const markerIdToUpdate = selectedMarkerId;
 
-        if (error) {
-          console.error(error);
-          setStatus("Marker konnte nicht aktualisiert werden: " + (error.message || String(error)), "error");
-          return;
-        }
+          const { data, error } = await supabaseClient
+            .from("markers")
+            .update({
+              title: payload.title,
+              description: payload.description,
+              x: payload.x,
+              y: payload.y,
+              updated_at: new Date().toISOString()
+            })
+            .eq("id", markerIdToUpdate)
+            .select()
+            .single();
 
-        await loadMarkers({ preserveSelection: true });
-        selectMarker(markerIdToUpdate, { focus: false, status: false });
-        setStatus("Marker aktualisiert.", "success");
-      } else {
-        const { data, error } = await supabaseClient
-          .from("markers")
-          .insert({
-            title: payload.title,
-            description: payload.description,
-            x: payload.x,
-            y: payload.y,
-            created_by: currentUser.id
-          })
-          .select("id")
-          .single();
+          if (error) throw error;
 
-        if (error) {
-          console.error(error);
-          setStatus("Marker konnte nicht erstellt werden: " + (error.message || String(error)), "error");
-          return;
-        }
+          suppressNextRealtime = true;
+          upsertLocalMarker(data);
+          selectMarker(markerIdToUpdate, { focus: false, status: false });
+          setStatus("Marker aktualisiert.", "success");
+        } else {
+          const { data, error } = await supabaseClient
+            .from("markers")
+            .insert({
+              title: payload.title,
+              description: payload.description,
+              x: payload.x,
+              y: payload.y,
+              created_by: currentUser.id
+            })
+            .select()
+            .single();
 
-        await loadMarkers({ preserveSelection: false });
+          if (error) throw error;
 
-        if (data?.id) {
+          suppressNextRealtime = true;
+          upsertLocalMarker(data);
           selectMarker(data.id, { focus: false, status: false });
+          setStatus("Neuer Marker erstellt.", "success");
         }
-
-        setStatus("Neuer Marker erstellt.", "success");
+      } catch (error) {
+        console.error(error);
+        setStatus("Speichern fehlgeschlagen: " + (error.message || String(error)), "error");
+      } finally {
+        saveMarkerBtn.disabled = false;
+        deleteMarkerBtn.disabled = !(selectedMarkerId !== null);
       }
     }
 
@@ -770,21 +758,28 @@
       }
 
       const markerIdToDelete = selectedMarkerId;
+      saveMarkerBtn.disabled = true;
+      deleteMarkerBtn.disabled = true;
 
-      const { error } = await supabaseClient
-        .from("markers")
-        .delete()
-        .eq("id", markerIdToDelete);
+      try {
+        const { error } = await supabaseClient
+          .from("markers")
+          .delete()
+          .eq("id", markerIdToDelete);
 
-      if (error) {
+        if (error) throw error;
+
+        suppressNextRealtime = true;
+        removeLocalMarker(markerIdToDelete);
+        resetMarkerForm();
+        setStatus("Marker gelöscht.", "success");
+      } catch (error) {
         console.error(error);
-        setStatus("Marker konnte nicht gelöscht werden: " + (error.message || String(error)), "error");
-        return;
+        setStatus("Löschen fehlgeschlagen: " + (error.message || String(error)), "error");
+      } finally {
+        saveMarkerBtn.disabled = false;
+        deleteMarkerBtn.disabled = !(selectedMarkerId !== null);
       }
-
-      selectedMarkerId = null;
-      await loadMarkers({ preserveSelection: false });
-      setStatus("Marker gelöscht.", "success");
     }
 
     function resetMarkerAndStatus() {
